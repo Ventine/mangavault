@@ -17,4 +17,10 @@ public abstract class MangaBaseException extends RuntimeException {
         this.title = title;
         this.status = status;
     }
+
+    public class MangaNotFoundException extends MangaBaseException {
+    public MangaNotFoundException(String message) {
+        super("Manga No Encontrado", message, HttpStatus.NOT_FOUND);
+    }
+}
 }

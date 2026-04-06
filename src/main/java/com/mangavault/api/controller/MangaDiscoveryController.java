@@ -5,10 +5,12 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mangavault.api.response.MangaDetailResponse;
 import com.mangavault.api.response.MangaResponse;
 import com.mangavault.api.service.MangaDiscoveryService;
 
@@ -34,4 +36,10 @@ public class MangaDiscoveryController {
                 ? ResponseEntity.noContent().build() 
                 : ResponseEntity.ok(results);
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<MangaDetailResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(mangaService.getMangaById(id));
+    }
+
 }

@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import com.mangavault.api.error.MangaBaseException.MangaNotFoundException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
@@ -27,5 +29,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatus.INTERNAL_SERVER_ERROR, 
             "Ocurrió un error inesperado en el servidor."
         );
+    }
+
+    // En GlobalExceptionHandler.java (Ya lo maneja MangaBaseException, pero puedes ser específico)
+    @ExceptionHandler(MangaNotFoundException.class)
+    public ProblemDetail handleNotFound(MangaNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 }
