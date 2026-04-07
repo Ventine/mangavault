@@ -1,20 +1,29 @@
-# ETAPA 1: Compilación (Build)
-# Usamos una imagen de Maven con Java 21 para compilar el proyecto
-FROM maven:3.9.6-eclipse-temurin-21 AS build
+# ETAPA 1: Dependencias (Caching)
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS deps
 WORKDIR /app
-# Copiamos el pom y el código fuente
+# Copiamos solo el pom para descargar dependencias primero
 COPY pom.xml .
-COPY src ./src
-# Compilamos saltando los tests para ir más rápido
-RUN mvn clean package -DskipTests
+RUN mvn dependency:go-offline -B
 
-# ETAPA 2: Ejecución (Runtime)
-# Usamos una imagen ligera de Java para correr el JAR
-FROM eclipse-temurin:21-jre-jammy
+# ETAPA 2: Compilación
+FROM deps AS build
+COPY src ./src
+RUN mvn clean package -DskipTests -B
+
+# ETAPA 3: Ejecución (Hardened Runtime)
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-# Copiamos el archivo JAR generado en la etapa anterior
+
+# Seguridad: No corremos como root
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring
+
+# Copiamos solo el JAR necesario
 COPY --from=build /app/target/*.jar app.jar
-# Exponemos el puerto de la API
-EXPOSE 8080
-# Comando para ejecutar la app
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Optimización de JVM para contenedores
+ENTRYPOINT ["java", \
+            "-XX:+UseContainerSupport", \
+            "-XX:MaxRAMPercentage=75.0", \
+            "-Djava.security.egd=file:/dev/./urandom", \
+            "-jar", "app.jar"]

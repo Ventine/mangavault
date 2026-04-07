@@ -8,32 +8,31 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import com.mangavault.api.error.MangaBaseException.MangaNotFoundException;
-
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    // 1. Manejador Inteligente para TODAS nuestras excepciones de negocio
     @ExceptionHandler(MangaBaseException.class)
     public ProblemDetail handleMangaException(MangaBaseException ex) {
-        // Aprovechamos los campos de nuestra jerarquía
+        // Extrae dinámicamente el 404, 502 o 500 según la excepción que llegue
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
         problem.setTitle(ex.getTitle());
         problem.setProperty("timestamp", Instant.now());
+        // Puedes añadir más propiedades customizadas aquí si lo deseas
         return problem;
     }
 
-    // Catch-all para errores inesperados (NullPointer, etc.)
+    // 2. Catch-all: El escudo final para errores que no previmos (ej. NullPointerException)
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUncaught(Exception ex) {
-        return ProblemDetail.forStatusAndDetail(
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
             HttpStatus.INTERNAL_SERVER_ERROR, 
-            "Ocurrió un error inesperado en el servidor."
+            "Ocurrió un error inesperado en el servidor. Por favor, contacte a soporte."
         );
-    }
-
-    // En GlobalExceptionHandler.java (Ya lo maneja MangaBaseException, pero puedes ser específico)
-    @ExceptionHandler(MangaNotFoundException.class)
-    public ProblemDetail handleNotFound(MangaNotFoundException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Error Interno Crítico");
+        problem.setProperty("timestamp", Instant.now());
+        // En un entorno real, aquí deberíamos loguear el stacktrace real (ex.getMessage()) 
+        // pero NO enviarlo al cliente por seguridad.
+        return problem;
     }
 }

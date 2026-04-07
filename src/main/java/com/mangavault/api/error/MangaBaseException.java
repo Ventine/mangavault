@@ -1,11 +1,10 @@
 package com.mangavault.api.error;
 
 import org.springframework.http.HttpStatus;
-
 import lombok.Getter;
 
 /**
- * Clase base para excepciones de negocio.
+ * Clase base para todas las excepciones de negocio de MangaVault.
  */
 @Getter
 public abstract class MangaBaseException extends RuntimeException {
@@ -17,10 +16,4 @@ public abstract class MangaBaseException extends RuntimeException {
         this.title = title;
         this.status = status;
     }
-
-    public class MangaNotFoundException extends MangaBaseException {
-    public MangaNotFoundException(String message) {
-        super("Manga No Encontrado", message, HttpStatus.NOT_FOUND);
-    }
-}
 }

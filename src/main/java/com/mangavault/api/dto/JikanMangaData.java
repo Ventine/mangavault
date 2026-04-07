@@ -1,42 +1,27 @@
 package com.mangavault.api.dto;
 
-import java.util.Optional;
-
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpStatusCode;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.mangavault.api.response.JikanPaginationResponse;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 public record JikanMangaData(
     @JsonProperty("mal_id") Long malId,
     String title,
     String synopsis,
+    String type,       // Agregado para el detalle
+    String status,     // Agregado para el detalle
     Double score,
+    Integer rank,      // Agregado para el detalle
     Integer chapters,
-    JikanImages images
+    JikanImages images,
+    List<Genre> genres // Agregado para el detalle
 ) {
+    // Sub-estructuras necesarias para mapear el JSON complejo de Jikan
     public record JikanImages(WebpImage webp) {
         public record WebpImage(@JsonProperty("image_url") String imageUrl) {}
     }
-
-    public Optional<JikanMangaData> fetchMangaById(Long id) {
-        try {
-            var response = restClient.get()
-                .uri("/manga/{id}/full", id)
-                .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
-                    // Si la API externa da 404, devolvemos un opcional vacío más adelante
-                    log.warn("Manga con ID {} no encontrado en Jikan", id);
-                })
-                .body(new ParameterizedTypeReference<JikanPaginationResponse<JikanMangaData>>() {});
-
-            return Optional.ofNullable(response).map(JikanPaginationResponse::data);
-        } catch (Exception e) {
-            log.error("Error al obtener detalle del manga {}", id, e);
-            return Optional.empty();
-        }
-    }
+    
+    public record Genre(String name) {}
+    
+    // NADA de métodos con restClient.get() aquí adentro.
 }
