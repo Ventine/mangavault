@@ -1,14 +1,29 @@
 package com.mangavault.api.controller;
 
+import java.lang.management.ManagementFactory;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
+import com.mangavault.api.dto.FavoriteManga;
+import com.mangavault.api.dto.JikanGateway;
+import com.mangavault.api.response.ApiStatusResponse;
 import com.mangavault.api.response.MangaDetailResponse;
 import com.mangavault.api.response.MangaResponse;
 import com.mangavault.api.service.MangaDiscoveryService;
+import com.mangavault.api.service.MangaVaultService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,7 +41,10 @@ import lombok.RequiredArgsConstructor;
 public class MangaDiscoveryController {
 
     private final MangaDiscoveryService mangaService;
-
+    private final MongoTemplate mongoTemplate;
+    private final JikanGateway jikanGateway;
+    private final MangaVaultService vaultService;
+    
     @Operation(summary = "Buscar mangas por nombre", description = "Realiza una búsqueda en la API externa de Jikan filtrando por relevancia.")
     @ApiResponse(responseCode = "200", description = "Búsqueda exitosa")
     @ApiResponse(responseCode = "204", description = "No se encontraron resultados")
@@ -47,5 +65,49 @@ public class MangaDiscoveryController {
             @Parameter(description = "ID único del manga (MAL ID)", example = "1")
             @PathVariable Long id) {
         return ResponseEntity.ok(mangaService.getMangaById(id));
+    }
+ 
+    @Operation(summary = "Guardar en la bóveda", description = "Guarda un manga de la API externa en tu base de datos local de MongoDB.")
+    @ApiResponse(responseCode = "201", description = "Manga guardado exitosamente")
+    @PostMapping("/vault/{id}")
+    public ResponseEntity<FavoriteManga> addToVault(@PathVariable Long id) {
+        FavoriteManga savedManga = vaultService.saveToVault(id);
+        return new ResponseEntity<>(savedManga, HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "Check de salud profundo", description = "Verifica la conectividad con MongoDB y la API de Jikan.")
+    @GetMapping("/status")
+    public ResponseEntity<ApiStatusResponse> getStatus() {
+        Map<String, String> deps = new HashMap<>();
+
+        // 1. Verificar MongoDB
+        try {
+            mongoTemplate.executeCommand("{ ping: 1 }");
+            deps.put("database", "UP (MongoDB Connected)");
+        } catch (Exception e) {
+            deps.put("database", "DOWN (Error connecting)");
+        }
+
+        // 2. Verificar Jikan (haciendo una llamada ligera al ID 1)
+        boolean jikanUp = jikanGateway.fetchMangaById(1L).isPresent();
+        deps.put("external_api_jikan", jikanUp ? "UP" : "DOWN/THROTTLED");
+
+        ApiStatusResponse response = new ApiStatusResponse(
+            "OPERATIONAL",
+            "0.0.1-SNAPSHOT",
+            LocalDateTime.now(),
+            calculateUptime(),
+            deps
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    private String calculateUptime() {
+        long uptimeMillis = ManagementFactory.getRuntimeMXBean().getUptime();
+        long seconds = uptimeMillis / 1000;
+        long minutes = seconds / 60;
+        long hours = minutes / 60;
+        return String.format("%d hours, %d minutes, %d seconds", hours % 24, minutes % 60, seconds % 60);
     }
 }
