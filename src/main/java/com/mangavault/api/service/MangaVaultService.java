@@ -11,7 +11,9 @@ import com.mangavault.api.error.MangaNotFoundException;
 import com.mangavault.api.repository.FavoriteMangaRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MangaVaultService {
@@ -21,6 +23,7 @@ public class MangaVaultService {
 
     public FavoriteManga saveToVault(Long id) {
     try {
+        System.out.println("--- INICIO DE saveToVault ---");
         // 1. Verificación de existencia
         if (repository.existsById(id)) {
             return repository.findById(id).orElseThrow();
@@ -52,8 +55,10 @@ public class MangaVaultService {
     } catch (MangaNotFoundException e) {
         throw e; // El GlobalExceptionHandler lo capturará como 404
     } catch (Exception e) {
-        // Log detallado para ver la causa real en la terminal de Docker
-        throw new RuntimeException("Fallo en la persistencia o comunicación con el servidor");
+        log.error("--- ERROR DETECTADO ---");
+        log.error("Causa: {}", e.getMessage());
+        e.printStackTrace(); // Esto llenará tu terminal de Docker con la solución
+        throw e; 
     }
 }
 }

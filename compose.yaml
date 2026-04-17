@@ -4,9 +4,9 @@ services:
     container_name: mangavault-db
     restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-password}
-      MONGO_INITDB_DATABASE: mangavault
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS:-password}
+      - MONGO_INITDB_DATABASE=mangavault
     ports:
       - '27017:27017'
     volumes:
@@ -27,17 +27,22 @@ services:
     ports:
       - '8080:8080'
     environment:
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-password}@mongodb:27017/mangavault?authSource=admin
-      APP_EXTERNAL_API_JIKAN_BASE_URL: https://api.jikan.moe/v4
+      # REFACTOR: Formato lista para evitar errores de sintaxis YAML
+      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-password}@db:27017/mangavault?authSource=admin
+      - APP_EXTERNAL_API_JIKAN_BASE_URL=https://api.jikan.moe/v4
+      - LOG_LEVEL_APP=TRACE
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_DATA_MONGODB_CORE_MONGOTEMPLATE=DEBUG
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY=DEBUG
+      - SPRING_DOCKER_COMPOSE_ENABLED=false
     depends_on:
       mongodb:
-        condition: service_healthy # Espera al Healthcheck, no solo al inicio
+        condition: service_healthy
     networks:
       - mangavault-net
     deploy:
       resources:
         limits:
-          memory: 1G # Evita que un leak de memoria tire todo tu sistema
+          memory: 1G
 
   mongo-express:
     image: mongo-express
@@ -45,9 +50,9 @@ services:
     ports:
       - '8081:8081'
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USER:-admin}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASS:-password}
-      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-password}@mongodb:27017/
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USER:-admin}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASS:-password}
+      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-password}@mongodb:27017/
     depends_on:
       mongodb:
         condition: service_healthy
