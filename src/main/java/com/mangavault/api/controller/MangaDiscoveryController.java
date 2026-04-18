@@ -28,6 +28,7 @@ import com.mangavault.api.response.ApiStatusResponse;
 import com.mangavault.api.response.FavoriteMangaResponse;
 import com.mangavault.api.response.MangaDetailResponse;
 import com.mangavault.api.response.MangaResponse;
+import com.mangavault.api.response.VaultStatsResponse;
 import com.mangavault.api.service.MangaDiscoveryService;
 import com.mangavault.api.service.MangaVaultService;
 
@@ -141,6 +142,16 @@ public class MangaDiscoveryController {
         
         // Devolvemos 204 No Content: La forma más limpia de decir "Hecho"
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+        summary = "Obtener estadísticas de la bóveda", 
+        description = "Calcula métricas agregadas como el total de mangas, promedio de score y distribución por estados."
+    )
+    @ApiResponse(responseCode = "200", description = "Estadísticas generadas correctamente")
+    @GetMapping("/vault/stats")
+    public ResponseEntity<VaultStatsResponse> getStats() {
+        return ResponseEntity.ok(vaultService.getVaultStats());
     }
 
     private String calculateUptime() {

@@ -1,9 +1,17 @@
 package com.mangavault.api.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.stereotype.Service;
 
 import com.mangavault.api.dto.FavoriteManga;
@@ -12,6 +20,7 @@ import com.mangavault.api.dto.JikanMangaData;
 import com.mangavault.api.error.MangaNotFoundException;
 import com.mangavault.api.repository.FavoriteMangaRepository;
 import com.mangavault.api.response.FavoriteMangaResponse;
+import com.mangavault.api.response.VaultStatsResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +32,8 @@ public class MangaVaultService {
 
     private final FavoriteMangaRepository repository;
     private final JikanGateway jikanGateway;
+    private final String COLLECTION_NAME = "favorite_mangas";
+    private final MongoTemplate mongoTemplate;
 
     public FavoriteManga saveToVault(Long id) {
         try {
@@ -107,4 +118,67 @@ public class MangaVaultService {
             throw new RuntimeException("Error interno al intentar eliminar el registro.");
         }
     }
+
+    public VaultStatsResponse getVaultStats() {
+        log.info("--- GENERANDO ESTADÍSTICAS DE LA BÓVEDA ---");
+
+        // Definimos los sub-pipelines
+        AggregationOperation generalStats = Aggregation.group()
+            .count().as("totalMangas")
+            .avg("score").as("averageScore");
+
+        AggregationOperation statusStats = Aggregation.group("status")
+            .count().as("count");
+
+        // REFACTOR: Todo en una sola etapa FacetOperation
+        Aggregation aggregation = Aggregation.newAggregation(
+            Aggregation.facet(generalStats).as("general")
+                    .and(statusStats).as("byStatus") // <--- ESTA ES LA CLAVE
+        );
+
+        try {
+            AggregationResults<Map> results = mongoTemplate.aggregate(aggregation, COLLECTION_NAME, Map.class);
+            Map<String, Object> rawResult = results.getUniqueMappedResult();
+
+            // Verificación de nulidad antes de procesar
+            if (rawResult == null) {
+                return new VaultStatsResponse(0, 0.0, new HashMap<>());
+            }
+
+            return mapToResponse(rawResult);
+        } catch (Exception e) {
+            log.error("Error en agregación MongoDB: {}", e.getMessage());
+            throw new RuntimeException("Error al calcular estadísticas");
+        }
+    }
+
+    private VaultStatsResponse mapToResponse(Map<String, Object> rawResult) {
+        // Extraemos con seguridad usando Optional o verificando nulos
+        List<Map> general = (List<Map>) rawResult.getOrDefault("general", new ArrayList<>());
+        List<Map> byStatus = (List<Map>) rawResult.getOrDefault("byStatus", new ArrayList<>());
+
+        long total = 0;
+        double avg = 0.0;
+        Map<String, Long> statusMap = new HashMap<>();
+
+        // Si hay datos generales
+        if (general != null && !general.isEmpty()) {
+            Map stats = general.get(0);
+            total = stats.get("totalMangas") != null ? ((Number) stats.get("totalMangas")).longValue() : 0;
+            avg = stats.get("averageScore") != null ? ((Number) stats.get("averageScore")).doubleValue() : 0.0;
+        }
+
+        // Procesamos el desglose por status
+        if (byStatus != null) {
+            for (Map entry : byStatus) {
+                Object statusId = entry.get("_id");
+                String status = (statusId != null) ? statusId.toString() : "Unknown";
+                long count = entry.get("count") != null ? ((Number) entry.get("count")).longValue() : 0;
+                statusMap.put(status, count);
+            }
+        }
+
+        return new VaultStatsResponse(total, Math.round(avg * 100.0) / 100.0, statusMap);
+    }
+
 }
