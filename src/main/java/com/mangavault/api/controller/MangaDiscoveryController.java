@@ -6,10 +6,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mangavault.api.dto.FavoriteManga;
 import com.mangavault.api.dto.JikanGateway;
 import com.mangavault.api.response.ApiStatusResponse;
+import com.mangavault.api.response.FavoriteMangaResponse;
 import com.mangavault.api.response.MangaDetailResponse;
 import com.mangavault.api.response.MangaResponse;
 import com.mangavault.api.service.MangaDiscoveryService;
@@ -101,6 +107,40 @@ public class MangaDiscoveryController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/vault") 
+    public ResponseEntity<Page<FavoriteMangaResponse>> getAllFavorites(
+        @PageableDefault(
+            size = 10, 
+            sort = "addedAt", 
+            direction = Direction.DESC 
+        ) Pageable pageable) {
+            
+        Page<FavoriteMangaResponse> favorites = vaultService.getFavoriteMangas(pageable);
+
+        if (favorites.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(favorites);
+    }
+
+    @Operation(
+        summary = "Eliminar de la bóveda", 
+        description = "Borra un manga de tus favoritos en MongoDB usando su ID único."
+    )
+    @ApiResponse(responseCode = "204", description = "Manga eliminado exitosamente (sin contenido de vuelta)")
+    @ApiResponse(responseCode = "404", description = "El ID proporcionado no se encontró en la base de datos")
+    @DeleteMapping("/vault/{id}") // <--- Verbo correcto para eliminar
+    public ResponseEntity<Void> removeFromVault(
+            @Parameter(description = "ID del manga a eliminar", example = "28")
+            @PathVariable Long id) {
+                
+        vaultService.removeFromVault(id);
+        
+        // Devolvemos 204 No Content: La forma más limpia de decir "Hecho"
+        return ResponseEntity.noContent().build();
     }
 
     private String calculateUptime() {
