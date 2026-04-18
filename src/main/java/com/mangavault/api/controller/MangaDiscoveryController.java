@@ -27,6 +27,7 @@ import com.mangavault.api.dto.JikanGateway;
 import com.mangavault.api.response.ApiStatusResponse;
 import com.mangavault.api.response.FavoriteMangaResponse;
 import com.mangavault.api.response.MangaDetailResponse;
+import com.mangavault.api.response.MangaRecommendationResponse;
 import com.mangavault.api.response.MangaResponse;
 import com.mangavault.api.response.VaultStatsResponse;
 import com.mangavault.api.service.MangaDiscoveryService;
@@ -152,6 +153,22 @@ public class MangaDiscoveryController {
     @GetMapping("/vault/stats")
     public ResponseEntity<VaultStatsResponse> getStats() {
         return ResponseEntity.ok(vaultService.getVaultStats());
+    }
+
+    @Operation(
+        summary = "Obtener recomendaciones basadas en un favorito", 
+        description = "Consulta la API de Jikan para obtener recomendaciones similares a un manga de tu bóveda, filtrando los que ya posees."
+    )
+        @ApiResponse(responseCode = "200", description = "Lista de recomendaciones generada")
+        @ApiResponse(responseCode = "404", description = "El ID base no fue encontrado")
+        @GetMapping("/vault/{id}/recommendations")
+        public ResponseEntity<List<MangaRecommendationResponse>> getRecommendations(@PathVariable Long id) {
+           
+            List<MangaRecommendationResponse> recommendations = vaultService.getSmartRecommendations(id);
+            
+            return recommendations.isEmpty() ? 
+                ResponseEntity.noContent().build() : 
+                ResponseEntity.ok(recommendations);
     }
 
     private String calculateUptime() {

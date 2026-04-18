@@ -2,6 +2,7 @@ package com.mangavault.api.dto;
 
 import com.mangavault.api.response.JikanPaginationResponse;
 import com.mangavault.api.response.JikanSingleResponse; // IMPORTANTE: Debes tener este record creado
+import com.mangavault.api.response.MangaRecommendationResponse;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -9,6 +10,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +22,7 @@ import com.mangavault.api.error.MangaExternalApiException;
 public class JikanGateway {
 
     private final RestClient restClient;
+    private  String baseUrl="";
 
     public JikanGateway(
         RestClient.Builder builder, 
@@ -61,6 +64,39 @@ public class JikanGateway {
         } catch (Exception e) {
             log.error("Error al obtener detalle del manga {} desde Jikan", id, e);
             return Optional.empty();
+        }
+    }
+
+    public List<MangaRecommendationResponse> fetchRecommendations(Long malId) {
+    // La URL de Jikan para recomendaciones
+        String url = String.format("%s/manga/%d/recommendations", baseUrl, malId);
+
+        try {
+            log.debug("Llamando a Jikan Recommendations: {}", url);
+
+            JikanRecommendationWrapper response = restClient.get()
+                .uri(url)
+                .retrieve()
+                .body(JikanRecommendationWrapper.class);
+
+            // Si la respuesta o la data son nulas, evitamos el NPE devolviendo lista vacía
+            if (response == null || response.data() == null) {
+                return Collections.emptyList();
+            }
+
+            return response.data().stream()
+                .map(item -> new MangaRecommendationResponse(
+                    item.entry().malId(),
+                    item.entry().title(),
+                    item.entry().images().jpg().imageUrl(),
+                    item.entry().url(), // Aquí usamos la URL del manga específico
+                    item.votes()
+                ))
+                .toList();
+
+        } catch (Exception e) {
+            log.error("Error al obtener recomendaciones de Jikan para el ID {}: {}", malId, e.getMessage());
+            return Collections.emptyList();
         }
     }
 }

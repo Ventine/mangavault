@@ -2,9 +2,13 @@ package com.mangavault.api.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +24,7 @@ import com.mangavault.api.dto.JikanMangaData;
 import com.mangavault.api.error.MangaNotFoundException;
 import com.mangavault.api.repository.FavoriteMangaRepository;
 import com.mangavault.api.response.FavoriteMangaResponse;
+import com.mangavault.api.response.MangaRecommendationResponse;
 import com.mangavault.api.response.VaultStatsResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -179,6 +184,30 @@ public class MangaVaultService {
         }
 
         return new VaultStatsResponse(total, Math.round(avg * 100.0) / 100.0, statusMap);
+    }
+
+    public List<MangaRecommendationResponse> getSmartRecommendations(Long id) {
+        log.info("--- GENERANDO RECOMENDACIONES INTELIGENTES PARA ID {} ---", id);
+
+        // 1. Obtener recomendaciones de la API externa
+        List<MangaRecommendationResponse> recommendations = jikanGateway.fetchRecommendations(id);
+
+        if (recommendations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. [SENIOR MOVE] Obtener todos los IDs de mis favoritos para filtrar
+        // Así evitamos recomendar algo que el usuario ya guardó
+        Set<Long> existingIds = repository.findAll().stream()
+                .map(FavoriteManga::id)
+                .collect(Collectors.toSet());
+
+        // 3. Filtrar y limitar a las mejores 10 recomendaciones
+        return recommendations.stream()
+                .filter(rec -> !existingIds.contains(rec.id()))
+                .sorted(Comparator.comparing(MangaRecommendationResponse::votes).reversed())
+                .limit(10)
+                .toList();
     }
 
 }
