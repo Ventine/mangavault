@@ -9,6 +9,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Collections;
 import java.util.List;
@@ -99,4 +100,36 @@ public class JikanGateway {
             return Collections.emptyList();
         }
     }
+
+    public JikanTopWrapper fetchTopMangas(String type, String filter, Integer page) {
+        // Si el usuario pide filtros específicos, usamos el buscador general que es más robusto
+        String baseUrlEndpoint = (type != null || filter != null) ? "/manga" : "/top/manga";
+        
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl + baseUrlEndpoint)
+                .queryParam("page", page != null ? page : 1);
+
+        if (type != null) builder.queryParam("type", type);
+        
+        // Si es el buscador general, traducimos 'bypopularity' a los términos de Jikan
+        if (baseUrlEndpoint.equals("/manga")) {
+            builder.queryParam("order_by", "popularity");
+            builder.queryParam("sort", "desc");
+        } else if (filter != null) {
+            builder.queryParam("filter", filter);
+        }
+
+        String url = builder.toUriString();
+
+        try {
+            log.info("🔍 URL Generada para Jikan: {}", url);
+            return restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(JikanTopWrapper.class);
+        } catch (Exception e) {
+            log.error("❌ Error en Jikan: {}", e.getMessage());
+            return new JikanTopWrapper(Collections.emptyList(), null);
+        }
+    }
+
 }

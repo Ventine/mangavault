@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mangavault.api.dto.FavoriteManga;
 import com.mangavault.api.dto.JikanGateway;
+import com.mangavault.api.dto.JikanTopWrapper;
 import com.mangavault.api.response.ApiStatusResponse;
 import com.mangavault.api.response.FavoriteMangaResponse;
 import com.mangavault.api.response.MangaDetailResponse;
@@ -184,6 +185,27 @@ public class MangaDiscoveryController {
         VaultSyncResponse report = vaultService.syncVault();
         
         return ResponseEntity.ok(report);
+    }
+
+    @Operation(
+        summary = "Explorar los mejores mangas", 
+        description = "Obtiene el ranking global de mangas desde Jikan. Permite filtrar por tipo (manga, manhwa, etc.) y filtros especiales."
+    )
+    @ApiResponse(responseCode = "200", description = "Lista de tendencias recuperada")
+    @GetMapping("/top")
+    public ResponseEntity<JikanTopWrapper> getTop(
+            @Parameter(description = "Tipo de recurso", example = "manga")
+            @RequestParam(required = false) String type,
+            @Parameter(description = "Filtro (bypopularity, favorite, upcoming)", example = "bypopularity")
+            @RequestParam(required = false) String filter,
+            @Parameter(description = "Número de página", example = "1")
+            @RequestParam(defaultValue = "1") Integer page) {
+                
+        JikanTopWrapper response = mangaService.getTopMangas(type, filter, page);
+        
+        return response.data().isEmpty() ? 
+               ResponseEntity.noContent().build() : 
+               ResponseEntity.ok(response);
     }
 
     private String calculateUptime() {

@@ -1,14 +1,15 @@
 package com.mangavault.api.service;
 
-import java.util.List;
 import java.util.Collections;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
 import com.mangavault.api.dto.JikanGateway;
 import com.mangavault.api.dto.JikanMangaData;
-import com.mangavault.api.error.MangaNotFoundException; // Import corregido
-import com.mangavault.api.error.MangaExternalApiException;
+import com.mangavault.api.dto.JikanTopWrapper;
+import com.mangavault.api.error.MangaExternalApiException; // Import corregido
+import com.mangavault.api.error.MangaNotFoundException;
 import com.mangavault.api.error.MangaServiceException;
 import com.mangavault.api.response.MangaDetailResponse;
 import com.mangavault.api.response.MangaResponse;
@@ -71,5 +72,9 @@ public class MangaDiscoveryService {
                 : Collections.emptyList(),
             data.images() != null && data.images().webp() != null ? data.images().webp().imageUrl() : null
         );
+    }
+
+    public JikanTopWrapper getTopMangas(String type, String filter, Integer page) {
+        return jikanGateway.fetchTopMangas(type, filter, page);
     }
 }
