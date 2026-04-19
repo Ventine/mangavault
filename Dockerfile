@@ -14,6 +14,18 @@ RUN mvn clean package -DskipTests -B
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring
+
+COPY --from=build /app/target/*.jar app.jar
+
+ENTRYPOINT ["java", \
+            "-XX:+UseContainerSupport", \
+            "-XX:MaxRAMPercentage=75.0", \
+            "-Dserver.port=${PORT}", \
+            "-Djava.security.egd=file:/dev/./urandom", \
+            "-jar", "app.jar"]
+
 # Seguridad: No corremos como root
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring

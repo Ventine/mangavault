@@ -1,33 +1,71 @@
-HELP.md
+# ===================================================================
+# 1. COMPILACIÓN Y ARTEFACTOS (Maven/Java)
+# ===================================================================
 target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.restore
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
 .mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+.mvn/wrapper/maven-wrapper.properties
 
-### STS ###
+# ===================================================================
+# 2. SEGURIDAD Y CONFIGURACIÓN (Vulnerabilidades)
+# ===================================================================
+# NUNCA subas archivos que contengan contraseñas o tokens
+.env
+.env.local
+*.properties
+!src/main/resources/application.properties
+# Ignorar propiedades específicas de entorno local
+src/main/resources/application-local.properties
+src/main/resources/application-dev.properties
+
+# Archivos de llaves y certificados
+*.jks
+*.p12
+*.key
+*.pem
+
+# ===================================================================
+# 3. IDEs Y EDITORES
+# ===================================================================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# VS Code
+.vscode/
+.history/
+*.code-workspace
+
+# STS / Eclipse
 .apt_generated
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
+# ===================================================================
+# 4. SISTEMA OPERATIVO Y LOGS
+# ===================================================================
+.DS_Store
+Thumbs.db
+*.log
+logs/
+temp/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
+# ===================================================================
+# 5. DOCKER Y LOCAL DB
+# ===================================================================
+# Ignora los datos persistentes si usas volúmenes locales en carpetas
+mongodb_data/
+.docker/
