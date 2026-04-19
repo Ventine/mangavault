@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +31,7 @@ import com.mangavault.api.response.MangaDetailResponse;
 import com.mangavault.api.response.MangaRecommendationResponse;
 import com.mangavault.api.response.MangaResponse;
 import com.mangavault.api.response.VaultStatsResponse;
+import com.mangavault.api.response.VaultSyncResponse;
 import com.mangavault.api.service.MangaDiscoveryService;
 import com.mangavault.api.service.MangaVaultService;
 
@@ -169,6 +171,19 @@ public class MangaDiscoveryController {
             return recommendations.isEmpty() ? 
                 ResponseEntity.noContent().build() : 
                 ResponseEntity.ok(recommendations);
+    }
+
+    @Operation(
+        summary = "Sincronizar bóveda con Jikan", 
+        description = "Actualiza el score y el status de todos los mangas en MongoDB con la información más reciente de la API externa."
+    )
+    @ApiResponse(responseCode = "200", description = "Proceso de sincronización completado")
+    @PatchMapping("/vault/sync")
+    public ResponseEntity<VaultSyncResponse> syncVault() {
+       
+        VaultSyncResponse report = vaultService.syncVault();
+        
+        return ResponseEntity.ok(report);
     }
 
     private String calculateUptime() {

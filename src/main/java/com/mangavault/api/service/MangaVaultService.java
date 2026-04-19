@@ -26,6 +26,7 @@ import com.mangavault.api.repository.FavoriteMangaRepository;
 import com.mangavault.api.response.FavoriteMangaResponse;
 import com.mangavault.api.response.MangaRecommendationResponse;
 import com.mangavault.api.response.VaultStatsResponse;
+import com.mangavault.api.response.VaultSyncResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -208,6 +209,64 @@ public class MangaVaultService {
                 .sorted(Comparator.comparing(MangaRecommendationResponse::votes).reversed())
                 .limit(10)
                 .toList();
+    }
+
+    public VaultSyncResponse syncVault() {
+        log.info("--- INICIANDO PROCESO DE SINCRONIZACIÓN GLOBAL (MODO INMUTABLE) ---");
+
+        List<FavoriteManga> myMangas = repository.findAll();
+        int updated = 0;
+        int failed = 0;
+        List<String> details = new ArrayList<>();
+
+        for (FavoriteManga localManga : myMangas) {
+            try {
+                var externalDataOpt = jikanGateway.fetchMangaById(localManga.id());
+
+                if (externalDataOpt.isPresent()) {
+                    var external = externalDataOpt.get();
+                    
+                    // Comparamos si hay cambios
+                    boolean scoreChanged = !external.score().equals(localManga.score());
+                    boolean statusChanged = !external.status().equalsIgnoreCase(localManga.status());
+
+                    if (scoreChanged || statusChanged) {
+                        // [SENIOR MOVE] Al ser un Record, creamos una COPIA con los datos nuevos
+                        // Manteniendo el ID y la fecha de creación original
+                        FavoriteManga updatedManga = new FavoriteManga(
+                            localManga.id(),
+                            localManga.title(),
+                            localManga.imageUrl(),
+                            external.score(),   // Dato nuevo
+                            external.status(),  // Dato nuevo
+                            localManga.addedAt() // Dato original
+                        );
+
+                        // MongoDB reconoce el ID y hace un "replace" del documento
+                        repository.save(updatedManga);
+                        
+                        updated++;
+                        details.add("Actualizado: " + localManga.title() + " (Score: " + external.score() + ")");
+                    }
+                } else {
+                    failed++;
+                    details.add("No encontrado en API: " + localManga.title());
+                }
+
+                // Respetamos el Rate Limit de Jikan
+                Thread.sleep(500); 
+
+            } catch (Exception e) {
+                log.error("Error sincronizando manga {}: {}", localManga.id(), e.getMessage());
+                failed++;
+                details.add("Error crítico en ID " + localManga.id() + ": " + e.getMessage());
+            }
+        }
+
+        log.info("Sincronización finalizada. Procesados: {}, Actualizados: {}, Fallidos: {}", 
+                myMangas.size(), updated, failed);
+
+        return new VaultSyncResponse(myMangas.size(), updated, failed, details);
     }
 
 }
